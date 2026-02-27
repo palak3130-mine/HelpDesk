@@ -6,8 +6,16 @@ from tickets.views import (
     DashboardSummaryView,
     TicketActivityListView,
     TicketAllowedTransitionsView,
-    FilterStaffByIssueView
+    FilterStaffByIssueView,
+    LogoutView,
 )
+from .views.dashboard_view import (
+    DashboardSummaryView,
+    MonthlyAnalyticsView,
+    ClientWiseAnalyticsView,
+    StaffWiseAnalyticsView,
+)
+from .views.ticket_views import TicketDetailView
 
 urlpatterns = [
     path("tickets/", TicketListView.as_view()),
@@ -17,4 +25,10 @@ urlpatterns = [
     path("tickets/<int:ticket_id>/activity/", TicketActivityListView.as_view()),
     path("tickets/<int:ticket_id>/allowed-transitions/", TicketAllowedTransitionsView.as_view()),
     path("tickets/<int:ticket_id>/eligible-staff/", FilterStaffByIssueView.as_view()),
+    path("dashboard/summary/", DashboardSummaryView.as_view()),
+    path("dashboard/monthly/", MonthlyAnalyticsView.as_view()),
+    path("dashboard/client-wise/", ClientWiseAnalyticsView.as_view()),
+    path("dashboard/staff-wise/", StaffWiseAnalyticsView.as_view()),
+    path("logout/", LogoutView.as_view()),
+    path("tickets/<int:pk>/", TicketDetailView.as_view()),
 ]

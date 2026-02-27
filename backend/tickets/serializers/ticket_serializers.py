@@ -1,22 +1,49 @@
 from rest_framework import serializers
 from tickets.models import Ticket
-from core.models import SubIssue
-from tickets.models import Staff
+from accounts.models import User
 
 
 class TicketSerializer(serializers.ModelSerializer):
+
+    # Client info
+    client_name = serializers.CharField(source="client.user.username", read_only=True)
+    client_email = serializers.CharField(source="client.user.email", read_only=True)
+    company_name = serializers.CharField(source="client.company_name", read_only=True)
+    client_phone = serializers.CharField(source="client.phone", read_only=True)
+
+    # Issue info
+    issue_name = serializers.CharField(source="issue.name", read_only=True)
+    sub_issue_name = serializers.CharField(source="sub_issue.name", read_only=True)
+
+    # Staff info
+    assigned_staff = serializers.CharField(
+        source="assigned_to.user.username",
+        read_only=True,
+        allow_null=True
+    )
+
     class Meta:
         model = Ticket
-        fields = "__all__"
-        read_only_fields = [
+        fields = [
+            "id",
             "ticket_number",
+            "status",
+            "description",
             "created_at",
             "updated_at",
-            "assigned_at",
-            "started_at",
-            "resolved_at",
-            "closed_at",
+            "client",
+            "issue",
+            "sub_issue",
+            "assigned_to",
+            "client_name",
+            "client_email",
+            "company_name",
+            "client_phone",
+            "issue_name",
+            "sub_issue_name",
+            "assigned_staff",
         ]
+        read_only_fields = ["ticket_number", "created_at", "updated_at"]
 
 
 class TicketCreateSerializer(serializers.ModelSerializer):
@@ -51,10 +78,10 @@ class TicketStatusUpdateSerializer(serializers.ModelSerializer):
 
         allowed = transitions.get(ticket.status, [])
 
-        if user.role == "STAFF":
+        if user.role == User.Role.STAFF:
             allowed = [s for s in allowed if s != Ticket.Status.CLOSED]
 
-        if user.role == "CLIENT":
+        if user.role == User.Role.CLIENT:
             raise serializers.ValidationError("Clients cannot update ticket status.")
 
         if data["status"] not in allowed:
@@ -62,7 +89,7 @@ class TicketStatusUpdateSerializer(serializers.ModelSerializer):
                 f"Transition from {ticket.status} to {data['status']} not allowed."
             )
 
-        if "assigned_to" in data:
+        if "assigned_to" in data and data["assigned_to"]:
             if data["assigned_to"].specialty != ticket.issue:
                 raise serializers.ValidationError(
                     "Assigned staff does not match ticket issue."

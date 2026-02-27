@@ -4,13 +4,16 @@ from django.db import models
 
 class User(AbstractUser):
 
-    ROLE_CHOICES = (
-        ('ADMIN', 'Admin'),
-        ('STAFF', 'Staff'),
-        ('CLIENT', 'Client'),
-    )
+    class Role(models.TextChoices):
+        ADMIN = "ADMIN", "Admin"
+        STAFF = "STAFF", "Staff"
+        CLIENT = "CLIENT", "Client"
 
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES)
+    role = models.CharField(
+        max_length=10,
+        choices=Role.choices,
+        default=Role.CLIENT,
+    )
 
     def __str__(self):
         return f"{self.username} - {self.role}"

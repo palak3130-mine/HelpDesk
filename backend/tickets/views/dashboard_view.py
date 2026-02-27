@@ -1,42 +1,43 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Count
 
-from tickets.models import Ticket
+from tickets.permissions import IsAdminUserRole, IsAdminOrStaff
+from tickets.services.dashboard_service import (
+    get_status_summary,
+    get_monthly_summary,
+    get_client_wise_summary,
+    get_staff_wise_summary,
+)
 
 
 class DashboardSummaryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user = request.user
+        data = get_status_summary(request.user)
+        return Response(data)
 
-        if user.role == "ADMIN":
-            queryset = Ticket.objects.all()
 
-        elif user.role == "STAFF":
-            queryset = Ticket.objects.filter(assigned_to__user=user)
+class MonthlyAnalyticsView(APIView):
+    permission_classes = [IsAuthenticated]
 
-        elif user.role == "CLIENT":
-            queryset = Ticket.objects.filter(client__user=user)
+    def get(self, request):
+        data = get_monthly_summary(request.user)
+        return Response(data)
 
-        else:
-            queryset = Ticket.objects.none()
 
-        summary = queryset.values("status").annotate(count=Count("status"))
+class ClientWiseAnalyticsView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminOrStaff]
 
-        data = {
-            "total_tickets": queryset.count(),
-            "created": 0,
-            "assigned": 0,
-            "started": 0,
-            "resolved": 0,
-            "closed": 0,
-        }
+    def get(self, request):
+        data = get_client_wise_summary(request.user)
+        return Response(data)
 
-        for item in summary:
-            status = item["status"].lower()
-            data[status] = item["count"]
 
+class StaffWiseAnalyticsView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUserRole]
+
+    def get(self, request):
+        data = get_staff_wise_summary(request.user)
         return Response(data)

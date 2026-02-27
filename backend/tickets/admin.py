@@ -65,11 +65,11 @@ class TicketAdmin(admin.ModelAdmin):
         allowed = transitions.get(current_status, [])
 
         # Staff cannot close
-        if user.role == "STAFF":
+        if user.role == User.Role.STAFF:
             allowed = [s for s in allowed if s != Ticket.Status.CLOSED]
 
         # Client cannot change status
-        if user.role == "CLIENT":
+        if user.role == User.Role.CLIENT:
             allowed = []
 
         return allowed

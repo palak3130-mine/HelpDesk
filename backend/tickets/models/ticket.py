@@ -1,12 +1,29 @@
 import uuid
 from django.db import models
-from django.utils import timezone
 from core.models import Issue, SubIssue
 from .client import Client
 from .staff import Staff
 from core.models.base import TimeStampedModel
 from smart_selects.db_fields import ChainedForeignKey
+from accounts.models import User
 
+
+class TicketQuerySet(models.QuerySet):
+    """
+    Role-based filtering at model layer.
+    """
+
+    def for_user(self, user):
+        if user.role == User.Role.ADMIN:
+            return self
+
+        if user.role == User.Role.STAFF:
+            return self.filter(assigned_to__user=user)
+
+        if user.role == User.Role.CLIENT:
+            return self.filter(client__user=user)
+
+        return self.none()
 
 
 class Ticket(TimeStampedModel):
@@ -34,9 +51,6 @@ class Ticket(TimeStampedModel):
         Issue,
         on_delete=models.PROTECT
     )
-
-    
-
 
     sub_issue = ChainedForeignKey(
         SubIssue,
@@ -73,6 +87,9 @@ class Ticket(TimeStampedModel):
     resolved_at = models.DateTimeField(null=True, blank=True)
     closed_at = models.DateTimeField(null=True, blank=True)
 
+    # 👇 Attach custom manager
+    objects = TicketQuerySet.as_manager()
+
     def get_allowed_transitions(self, user):
         transitions = {
             "CREATED": ["ASSIGNED"],
@@ -81,10 +98,9 @@ class Ticket(TimeStampedModel):
             "RESOLVED": ["CLOSED"],
             "CLOSED": [],
         }
-
         return transitions.get(self.status, [])
-    def save(self, *args, **kwargs):
 
+    def save(self, *args, **kwargs):
         is_new = self.pk is None
 
         if not is_new:

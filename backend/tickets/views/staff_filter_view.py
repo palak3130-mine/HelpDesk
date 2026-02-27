@@ -1,29 +1,44 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied, NotFound
 
-from accounts.models import User
 from tickets.models import Ticket
+from tickets.models.staff import Staff  # adjust if needed
 
 
 class FilterStaffByIssueView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, ticket_id):
-        ticket = Ticket.objects.get(id=ticket_id)
+        user = request.user
 
-        # assuming staff have field: specialty (ForeignKey to Issue)
-        staff = User.objects.filter(
-            role="STAFF",
-            specialty=ticket.issue
+        # 🔒 Clients cannot see eligible staff
+        if user.role == user.Role.CLIENT:
+            raise PermissionDenied("Clients cannot view eligible staff.")
+
+        # 🔐 Secure ticket lookup
+        ticket = (
+            Ticket.objects
+            .for_user(user)
+            .filter(id=ticket_id)
+            .first()
         )
+
+        if not ticket:
+            raise NotFound("Ticket not found.")
+
+        # 👇 Fetch Staff model (not User)
+        staff_queryset = Staff.objects.filter(
+            specialty=ticket.issue
+        ).select_related("user")
 
         data = [
             {
-                "id": s.id,
-                "username": s.username
+                "id": staff.user.id,
+                "username": staff.user.username
             }
-            for s in staff
+            for staff in staff_queryset
         ]
 
         return Response(data)
