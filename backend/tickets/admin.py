@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 
 from .models import Client, Staff, Ticket, TicketActivity
 from core.models import SubIssue
+from accounts.models import User
 
 
 # ---------------------------------------------------

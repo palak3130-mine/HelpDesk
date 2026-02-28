@@ -9,7 +9,7 @@ class TicketSerializer(serializers.ModelSerializer):
     client_name = serializers.CharField(source="client.user.username", read_only=True)
     client_email = serializers.CharField(source="client.user.email", read_only=True)
     company_name = serializers.CharField(source="client.company_name", read_only=True)
-    client_phone = serializers.CharField(source="client.phone", read_only=True)
+    client_phone = serializers.CharField(source="client.whatsapp_number", read_only=True)
 
     # Issue info
     issue_name = serializers.CharField(source="issue.name", read_only=True)
@@ -68,27 +68,30 @@ class TicketStatusUpdateSerializer(serializers.ModelSerializer):
         ticket = self.instance
         user = self.context["request"].user
 
-        transitions = {
-            Ticket.Status.CREATED: [Ticket.Status.ASSIGNED],
-            Ticket.Status.ASSIGNED: [Ticket.Status.STARTED],
-            Ticket.Status.STARTED: [Ticket.Status.RESOLVED],
-            Ticket.Status.RESOLVED: [Ticket.Status.CLOSED],
-            Ticket.Status.CLOSED: [],
-        }
+        # Only validate active status updates
+        if "status" in data:
+            transitions = {
+                Ticket.Status.CREATED: [Ticket.Status.ASSIGNED],
+                Ticket.Status.ASSIGNED: [Ticket.Status.STARTED],
+                Ticket.Status.STARTED: [Ticket.Status.RESOLVED],
+                Ticket.Status.RESOLVED: [Ticket.Status.CLOSED],
+                Ticket.Status.CLOSED: [],
+            }
 
-        allowed = transitions.get(ticket.status, [])
+            allowed = transitions.get(ticket.status, [])
 
-        if user.role == User.Role.STAFF:
-            allowed = [s for s in allowed if s != Ticket.Status.CLOSED]
+            if user.role == User.Role.STAFF:
+                allowed = [s for s in allowed if s != Ticket.Status.CLOSED]
 
-        if user.role == User.Role.CLIENT:
-            raise serializers.ValidationError("Clients cannot update ticket status.")
+            if user.role == User.Role.CLIENT:
+                raise serializers.ValidationError("Clients cannot update ticket status.")
 
-        if data["status"] not in allowed:
-            raise serializers.ValidationError(
-                f"Transition from {ticket.status} to {data['status']} not allowed."
-            )
+            if data["status"] not in allowed:
+                raise serializers.ValidationError(
+                    f"Transition from {ticket.status} to {data['status']} not allowed."
+                )
 
+        # Validate assigned_to field
         if "assigned_to" in data and data["assigned_to"]:
             if data["assigned_to"].specialty != ticket.issue:
                 raise serializers.ValidationError(

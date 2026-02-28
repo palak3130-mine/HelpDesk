@@ -74,7 +74,9 @@ export default function TicketsPage() {
             <div className="flex justify-between items-start">
               <div className="space-y-2">
                 <p className="text-xs tracking-wider text-slate-400 uppercase">
-                  Ticket #{ticket.ticket_number.slice(0, 8)}
+                  Ticket #{typeof ticket.ticket_number === 'string' && ticket.ticket_number.includes('-')
+                    ? ticket.ticket_number.split('-')[0]
+                    : String(ticket.ticket_number).slice(0, 8)}
                 </p>
 
                 <h3 className="text-lg font-semibold text-slate-800 group-hover:text-indigo-600 transition">

@@ -65,7 +65,11 @@ async function fetchWithAuth(endpoint: string, options: any = {}) {
 export async function apiGet(endpoint: string) {
   const res = await fetchWithAuth(endpoint);
 
-  if (!res.ok) throw new Error("GET failed");
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const errorMsg = errorData?.detail || errorData?.error || "GET failed";
+    throw new Error(errorMsg);
+  }
   return res.json();
 }
 
@@ -75,7 +79,11 @@ export async function apiPost(endpoint: string, body: any) {
     body: JSON.stringify(body),
   });
 
-  if (!res.ok) throw new Error("POST failed");
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const errorMsg = errorData?.detail || errorData?.error || "POST failed";
+    throw new Error(errorMsg);
+  }
   return res.json();
 }
 
@@ -85,6 +93,22 @@ export async function apiPatch(endpoint: string, body: any) {
     body: JSON.stringify(body),
   });
 
-  if (!res.ok) throw new Error("PATCH failed");
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    // Handle various error formats from Django
+    let errorMsg = "PATCH failed";
+    if (errorData?.detail) {
+      errorMsg = errorData.detail;
+    } else if (errorData?.error) {
+      errorMsg = errorData.error;
+    } else if (typeof errorData === 'object') {
+      // Handle field-level errors
+      const firstError = Object.values(errorData)[0];
+      if (firstError) {
+        errorMsg = Array.isArray(firstError) ? firstError[0] : firstError;
+      }
+    }
+    throw new Error(errorMsg);
+  }
   return res.json();
 }

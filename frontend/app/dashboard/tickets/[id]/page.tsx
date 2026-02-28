@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiGet, apiPatch } from "@/lib/api";
-import { Ticket } from "@/types/ticket";
-
 
 interface Ticket {
   id: number;
@@ -12,6 +10,18 @@ interface Ticket {
   status: string;
   description: string;
   created_at: string;
+  updated_at: string;
+  client: number;
+  issue: number;
+  sub_issue: number;
+  assigned_to: number | null;
+  client_name: string;
+  client_email: string;
+  company_name: string;
+  client_phone: string;
+  issue_name: string;
+  sub_issue_name: string;
+  assigned_staff: string | null;
 }
 
 interface Activity {
@@ -62,14 +72,36 @@ export default function TicketDetailPage() {
   async function updateTicket() {
     setLoadingUpdate(true);
     try {
-      await apiPatch(`/api/tickets/${id}/update/`, {
+      // Send the update
+      const updateData: any = {
         status: selectedStatus,
-        assigned_to: selectedStaff || null,
-      });
+      };
+      
+      if (selectedStaff) {
+        updateData.assigned_to = parseInt(selectedStaff);
+      }
+      
+      await apiPatch(`/api/tickets/${id}/update/`, updateData);
 
-      router.refresh();
-    } catch {
-      alert("Update failed");
+      // Refetch ticket data
+      const updatedTicket = await apiGet(`/api/tickets/${id}/`);
+      setTicket(updatedTicket);
+      
+      // Refetch activities
+      const activitiesData = await apiGet(`/api/tickets/${id}/activity/`);
+      setActivities(activitiesData.results || activitiesData);
+      
+      // Refetch allowed statuses
+      const transitionsData = await apiGet(`/api/tickets/${id}/allowed-transitions/`);
+      setAllowedStatuses(transitionsData.allowed_statuses);
+      setSelectedStatus(transitionsData.current_status);
+      
+      // Reset selected staff
+      setSelectedStaff("");
+    } catch (err: any) {
+      const errorMsg = err?.message || "Failed to update ticket";
+      alert(`Update failed: ${errorMsg}`);
+      console.error("Update error:", err);
     } finally {
       setLoadingUpdate(false);
     }
@@ -89,11 +121,16 @@ export default function TicketDetailPage() {
       <div className="flex justify-between items-center">
         <div>
           <p className="text-xs tracking-wider uppercase text-slate-400">
-            Ticket #{ticket.ticket_number.slice(0, 8)}
+            Ticket #{typeof ticket.ticket_number === 'string' && ticket.ticket_number.includes('-') 
+              ? ticket.ticket_number.split('-')[0]
+              : String(ticket.ticket_number).slice(0, 8)}
           </p>
           <h1 className="text-3xl font-bold text-slate-800 mt-2">
             Support Request Details
           </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Full ID: {String(ticket.ticket_number)}
+          </p>
         </div>
 
         <StatusBadge status={ticket.status} />

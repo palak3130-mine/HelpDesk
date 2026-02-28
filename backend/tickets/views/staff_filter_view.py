@@ -5,6 +5,7 @@ from rest_framework.exceptions import PermissionDenied, NotFound
 
 from tickets.models import Ticket
 from tickets.models.staff import Staff  # adjust if needed
+from accounts.models import User
 
 
 class FilterStaffByIssueView(APIView):
@@ -14,7 +15,7 @@ class FilterStaffByIssueView(APIView):
         user = request.user
 
         # 🔒 Clients cannot see eligible staff
-        if user.role == user.Role.CLIENT:
+        if user.role == User.Role.CLIENT:
             raise PermissionDenied("Clients cannot view eligible staff.")
 
         # 🔐 Secure ticket lookup

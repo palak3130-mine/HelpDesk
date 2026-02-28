@@ -78,6 +78,7 @@ class TicketCreateView(generics.CreateAPIView):
 
 class TicketStatusUpdateView(generics.UpdateAPIView):
     serializer_class = TicketStatusUpdateSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         return Ticket.objects.for_user(self.request.user)
@@ -94,4 +95,19 @@ class TicketStatusUpdateView(generics.UpdateAPIView):
         if user.role == User.Role.STAFF and serializer.validated_data.get("status") == Ticket.Status.CLOSED:
             raise PermissionDenied("Staff cannot close tickets.")
 
+        # Get old status before saving
+        old_status = ticket.status
+        
+        # Save the updated ticket
         serializer.save()
+        
+        # Log activity if status changed
+        new_status = serializer.validated_data.get("status", ticket.status)
+        if old_status != new_status:
+            from tickets.models import TicketActivity
+            TicketActivity.objects.create(
+                ticket=ticket,
+                changed_by=user,
+                old_status=old_status,
+                new_status=new_status
+            )

@@ -98,7 +98,17 @@ class Ticket(TimeStampedModel):
             "RESOLVED": ["CLOSED"],
             "CLOSED": [],
         }
-        return transitions.get(self.status, [])
+        allowed = transitions.get(self.status, [])
+        
+        # STAFF cannot close tickets
+        if user.role == User.Role.STAFF:
+            allowed = [s for s in allowed if s != self.Status.CLOSED]
+        
+        # CLIENT cannot update tickets
+        if user.role == User.Role.CLIENT:
+            allowed = []
+        
+        return allowed
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
